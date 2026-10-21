@@ -1,49 +1,65 @@
-# Local Multi-Agent Game Dev Pipeline
+# Interactive & Distributed Multi-Agent Godot Pipeline
 
 ## Descrição do Projeto
-Este projeto é uma arquitetura de orquestração multi-agente totalmente local para o desenvolvimento autônomo de jogos. A partir de um simples arquivo de texto (To-Do List), o sistema divide as tarefas entre agentes especializados baseados em Inteligência Artificial que trabalham em conjunto para escrever o código-fonte (lógica, mecânicas) e gerar os gráficos (sprites, cenários), salvando os artefatos diretamente no disco.
+Este projeto é uma arquitetura de orquestração multi-agente local interativa para o desenvolvimento de jogos na engine Godot. Ele se conecta a repositórios Git remotos para colaboração distribuída, mas possui um diferencial poderoso: **uma interface de chat via Linha de Comando (CLI) com capacidade de auto-modificação.**
 
-O sistema foi desenhado para rodar 100% offline, utilizando apenas a CPU/GPU local, sem dependência de APIs externas pagas no momento, mas com uma arquitetura modular preparada para conectar ferramentas web no futuro.
+Ao iniciar o sistema, o usuário entra em um chat direto com o Orquestrador. Através deste terminal, o usuário pode pedir para que os agentes construam o jogo no Godot (puxando tarefas do repositório remoto) OU pedir para que o Orquestrador melhore o próprio código da pipeline (adicionando novas ferramentas, alterando prompts dos agentes ou otimizando a lógica de integração).
 
-## Stack Tecnológica Local
-*   **Orquestração de Agentes:** [CrewAI](https://github.com/joaomdmoura/crewAI) (ou framework similar baseado em Python).
-*   **Processamento de Linguagem (LLM):** [Ollama](https://ollama.com/) (modelos locais: Llama 3 para orquestração e DeepSeek Coder/Qwen para lógica de programação).
-*   **Geração de Gráficos/Imagens:** [ComfyUI](https://github.com/comfyanonymous/ComfyUI) via API local (Stable Diffusion XL ou modelos 2D/Pixel Art).
-*   **Linguagem Principal:** Python 3.10+
+## Stack Tecnológica
+*   **Interface Principal:** Chat Interativo via CLI (Linha de Comando).
+*   **Engine Alvo:** Godot Engine 4.x (GDScript e `.tscn`).
+*   **Orquestração de Agentes:** CrewAI / LangChain (Python).
+*   **Processamento de Linguagem (LLM):** Ollama (Llama 3, DeepSeek Coder) rodando localmente.
+*   **Geração de Gráficos:** ComfyUI via API local.
+*   **Integração e Sincronização:** GitPython (para versionamento do jogo e do próprio orquestrador).
 
 ## Papéis dos Agentes (Agents)
 
-1.  **Manager Agent (Gerente de Projeto):**
-    *   **Função:** Lê o arquivo `todo.txt` fornecido pelo usuário.
-    *   **Ação:** Analisa os requisitos, quebra a lista em tarefas granulares (código e arte) e delega para os agentes apropriados na ordem correta.
-2.  **Programmer Agent (Programador):**
-    *   **Função:** Responsável pela lógica do jogo.
-    *   **Ação:** Escreve scripts (ex: Pygame ou Godot script), garante que os caminhos dos assets gerados estejam corretos no código e salva os arquivos no diretório `/src`.
-3.  **Art Director Agent (Artista):**
-    *   **Função:** Responsável pela identidade visual.
-    *   **Ação:** Traduz a requisição visual em um prompt detalhado em JSON, envia a requisição para a API local do ComfyUI e salva a imagem gerada no diretório `/assets`.
+1.  **Interactive Orchestrator (O Cérebro / CLI):**
+    *   **Função:** Ponto de contato direto com o usuário via terminal.
+    *   **Ação:** Interpreta o input do usuário em tempo real. Decide se a requisição é sobre o desenvolvimento do jogo (Godot) ou sobre a evolução da própria pipeline (Python). Delega as tarefas dinamicamente.
+2.  **Meta-Developer Agent (O Engenheiro da Pipeline):**
+    *   **Função:** Responsável pela auto-modificação e melhoria do sistema.
+    *   **Ação:** Lê, edita e cria novos scripts na pasta `/tools` e `/agents`. Pode criar novas integrações (ex: "Adicione uma tool para ler PDFs no projeto") alterando o código-fonte do próprio orquestrador em tempo real.
+3.  **Godot Programmer Agent (Programador de Jogo):**
+    *   **Função:** Desenvolve o jogo.
+    *   **Ação:** Escreve GDScript e estrutura cenas do Godot no repositório clonado.
+4.  **Art Director Agent (Artista):**
+    *   **Função:** Gera a arte do jogo.
+    *   **Ação:** Usa o ComfyUI para criar sprites e os salva na pasta do projeto Godot.
+5.  **Sync Agent (Gerente de Repositório):**
+    *   **Função:** Lida com o Git remoto.
+    *   **Ação:** Sincroniza o To-Do list, resolve merges simples e faz commits das alterações do jogo ou das melhorias feitas pelo Meta-Developer.
 
 ## Ferramentas Personalizadas (Tools)
-Os agentes interagem com o ambiente através de ferramentas customizadas em Python:
-*   `read_todo_list()`: Lê as requisições iniciais.
-*   `generate_local_image(prompt)`: Faz um POST para a API do ComfyUI (`http://127.0.0.1:8188/prompt`) e faz o download do resultado.
-*   `save_code_to_disk(filename, code)`: Escreve o código gerado no disco de forma segura.
+*   **Ferramentas de Jogo (Godot):** `write_godot_files()`, `generate_local_image()`.
+*   **Ferramentas de Sincronização:** `fetch_remote_tasks()`, `git_push_changes()`.
+*   **Ferramentas de Meta-Programação (Novas):** 
+    *   `read_orchestrator_code(filepath)`: Permite ler como os agentes e ferramentas atuais estão programados.
+    *   `modify_orchestrator_code(filepath, new_code)`: Altera o código Python da própria pipeline.
+    *   `hot_reload_system()`: Recarrega as configurações em memória após uma modificação para aplicar as melhorias instantaneamente sem fechar o chat.
 
 ## Fluxo de Trabalho (Workflow)
-1. O usuário edita o arquivo `todo.txt` (ex: "Criar uma janela de 800x600, um fundo azul e um sprite de nave espacial").
-2. O script principal `main.py` inicia a Crew (equipe de agentes).
-3. O Manager lê o `todo.txt` e cria o plano de execução.
-4. O Artista solicita à API do ComfyUI a imagem da nave e a salva como `nave.png` em `/assets`.
-5. O Programador escreve o código do jogo em Python carregando o asset `assets/nave.png` e salva como `game.py` em `/src`.
-6. O sistema finaliza e o usuário pode executar o jogo criado.
+1. O usuário executa `python main.py` e o terminal abre uma interface de chat: `[Orquestrador]: Olá! O que vamos construir ou melhorar hoje?`
+2. **Cenário A (Desenvolver o Jogo):** O usuário diz "Sincronize com o repo remoto e faça as tarefas de hoje". O Orquestrador aciona o Sync Agent, lê o To-Do List, e aciona o Programador Godot e o Artista.
+3. **Cenário B (Auto-Modificação):** O usuário diz no chat "Crie uma nova Tool que permita ao artista aplicar filtros nas imagens geradas". 
+    * O Orquestrador designa o `Meta-Developer Agent`.
+    * O agente escreve uma nova função em Python na pasta `/tools/image_filters.py`.
+    * O agente altera o script do Artista para importar e usar essa nova ferramenta.
+    * O sistema executa um *hot reload* e avisa no chat: "Nova ferramenta criada e adicionada ao Artista com sucesso!"
 
 ## Estrutura de Diretórios Proposta
 ```text
 /
-├── main.py                 # Ponto de entrada que inicializa a orquestração
-├── todo.txt                # Arquivo de entrada do usuário com o que deve ser feito
-├── requirements.txt        # Dependências do Python (crewai, requests, etc)
-├── /agents                 # Definições de persona e comportamento de cada agente
-├── /tools                  # Funções em Python que os agentes usam (Salvar arquivo, Chamar ComfyUI)
-├── /src                    # Código-fonte do jogo gerado pelos agentes
-└── /assets                 # Imagens, sprites e gráficos gerados pelo agente de arte
+├── .env                    # Chaves do repositório Git
+├── main.py                 # Loop principal do CLI de Chat e Orquestrador
+├── requirements.txt        
+├── /agents                 # Scripts dos agentes (que podem ser editados pela própria IA)
+├── /tools                  # Ferramentas Python (que podem ser expandidas pela própria IA)
+└── /workspace              # Repositório clonado
+    ├── project.godot       
+    ├── todo_list.md        
+    ├── /scenes             
+    ├── /scripts            
+    └── /assets             
+```
